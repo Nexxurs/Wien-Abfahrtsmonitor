@@ -134,13 +134,13 @@ def main(argv):
                     print(e)
                     if lcdUsage:
                         lcd.clear()
-                        lcd.message("FATAL ERROR \nPlease check the Logs")
+                        lcd.message("FATAL ERROR \nCheck the Logs")
                     raise
                 else:
                     print(str(x) + " ERROR " + str(e))
                     if lcdUsage:
                         lcd.clear()
-                        lcd.message("ERROR - Please\ncheck the Logs")
+                        lcd.message("ERROR-{}\nCheck the Logs".format(type(e)))
                     time.sleep(1)
 
 
