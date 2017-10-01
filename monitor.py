@@ -140,7 +140,7 @@ def main(argv):
                     print(str(x) + " ERROR " + str(e))
                     if lcdUsage:
                         lcd.clear()
-                        lcd.message("ERROR\nPlease check the Logs")
+                        lcd.message("ERROR - Please\ncheck the Logs")
                     time.sleep(1)
 
 
