@@ -96,12 +96,20 @@ def main(argv):
             try:
                 r = requests.get(url)
                 if r.status_code == 200:
-                    rbl.line = r.json()['data']['monitors'][0]['lines'][0]['name']
-                    rbl.station = r.json()['data']['monitors'][0]['locationStop']['properties']['title']
-                    rbl.direction = r.json()['data']['monitors'][0]['lines'][0]['towards']
-                    rbl.time = \
-                    r.json()['data']['monitors'][0]['lines'][0]['departures']['departure'][0]['departureTime'][
-                        'countdown']
+                    json = r.json()['data']['monitors']
+
+                    soonest = json[0]
+
+                    if len(json) > 1:
+                        for i in range(1,len(json)):
+                            if json[i]['lines'][0]['departures']['departure'][0]['departureTime']['countdown'] < \
+                                    soonest['lines'][0]['departures']['departure'][0]['departureTime']['countdown']:
+                                soonest = json[i]
+
+                    rbl.line = soonest['lines'][0]['name']
+                    rbl.station = soonest['locationStop']['properties']['title']
+                    rbl.direction = soonest['lines'][0]['towards']
+                    rbl.time = soonest['lines'][0]['departures']['departure'][0]['departureTime']['countdown']
                     if consoleUsage:
                         dumpRBL(rbl)
                     if lcdUsage:
