@@ -16,13 +16,13 @@ class RBL:
 
 
 def replaceUmlaut(s):
-    s = s.replace(chr(196), "Ae")  # A umlaut
-    s = s.replace(chr(214), "Oe")  # O umlaut
-    s = s.replace(chr(220), "Ue")  # U umlaut
-    s = s.replace(chr(228), "ae")  # a umlaut
-    s = s.replace(chr(223), "ss")  # Sharp s
-    s = s.replace(chr(246), "oe")  # o umlaut
-    s = s.replace(chr(252), "ue")  # u umlaut
+    s = s.replace('Ä', "Ae")  # A umlaut
+    s = s.replace('Ö', "Oe")  # O umlaut
+    s = s.replace('Ü', "Ue")  # U umlaut
+    s = s.replace('ä', "ae")  # a umlaut
+    s = s.replace('ß', "ss")  # Sharp s
+    s = s.replace('ö', "oe")  # o umlaut
+    s = s.replace('ü', "ue")  # u umlaut
     return s
 
 
