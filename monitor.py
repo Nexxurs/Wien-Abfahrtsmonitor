@@ -5,6 +5,7 @@ import getopt
 import time
 import requests
 import configparser
+import urllib3.exceptions as urlexceptions
 
 
 class RBL:
@@ -112,6 +113,12 @@ def main(argv):
                 if lcdUsage:
                     lcd.clear()
                 sys.exit(0)
+            except urlexceptions.MaxRetryError as e:
+                print("Max Retries Exception!")
+                if lcdUsage:
+                    lcd.clear()
+                    lcd.message("Connection Error!\nWill try again shortly")
+                time.sleep(1)
             except Exception as e:
                 x += 1
                 if x > maxError:
