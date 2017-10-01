@@ -115,12 +115,12 @@ def main(argv):
             except Exception as e:
                 x += 1
                 if x > maxError:
-                    print(str(x) + " ERROR - System shutdown")
+                    print(str(x) + "FATAL ERROR")
                     print(e)
                     if lcdUsage:
                         lcd.clear()
                         lcd.message("FATAL ERROR \nPlease check the Logs")
-                    sys.exit(1)
+                    raise
                 else:
                     print(str(x) + " ERROR " + str(e))
                     if lcdUsage:
