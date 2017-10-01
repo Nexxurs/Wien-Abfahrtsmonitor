@@ -106,7 +106,7 @@ def main(argv):
                         dumpRBL(rbl)
                     if lcdUsage:
                         lcdShow(rbl)
-                        x = 0
+                    x = 0
                     time.sleep(st)
             except KeyboardInterrupt:
                 print("User exit by Keyboard Interrupt")
@@ -133,6 +133,7 @@ def main(argv):
                     if lcdUsage:
                         lcd.clear()
                         lcd.message("ERROR\nPlease check the Logs")
+                    time.sleep(1)
 
 
 def configLCD():
