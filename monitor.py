@@ -33,6 +33,7 @@ def main(argv):
     global consoleUsage
     global st
     global maxError
+    global errorCount
     global config
 
     apikey = False
@@ -91,13 +92,15 @@ def main(argv):
     print("------------------------------------------")
     print("New Start: LCD={} Console={} RBLs={}".format(lcdUsage, consoleUsage, configrbls))
 
-    x = 0
+    errorCount = 0
     while True:
         for rbl in rbls:
             useRBL(rbl)
 
 
 def useRBL(rbl):
+    global errorCount
+
     apiurl = 'https://www.wienerlinien.at/ogd_realtime/monitor?rbl={rbl}&sender={apikey}'
 
     url = apiurl.replace('{apikey}', apikey).replace('{rbl}', rbl.id)
@@ -126,7 +129,7 @@ def useRBL(rbl):
                 rbl.station = soonest['locationStop']['properties']['title']
                 rbl.direction = soonest['lines'][0]['towards']
                 rbl.time = soonest['lines'][0]['departures']['departure'][0]['departureTime']['countdown']
-                x = 0
+                errorCount = 0
                 if consoleUsage:
                     dumpRBL(rbl)
                 if lcdUsage:
@@ -150,8 +153,8 @@ def useRBL(rbl):
             lcd.message("Connection Error!\nWill try again shortly")
         time.sleep(1)
     except Exception as e:
-        x += 1
-        if x > maxError:
+        errorCount += 1
+        if errorCount > maxError:
             print("FATAL ERROR")
             print("Type: {}".format(type(e)))
             if r is not None:
@@ -169,6 +172,7 @@ def useRBL(rbl):
                 lcd.clear()
                 lcd.message("ERROR-{}\nCheck the Logs".format(type(e)))
             time.sleep(1)
+
 
 def configLCD():
     import Adafruit_CharLCD as LCD
@@ -207,6 +211,7 @@ def usage():
     print('  -c, --config\tconfig file with API Key and rbl numbers')
     print('optional arguments:')
     print('  -h, --help\tshow this help')
+
 
 if __name__ == "__main__":
     main(sys.argv[1:])
