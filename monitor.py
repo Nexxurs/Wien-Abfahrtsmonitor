@@ -167,7 +167,7 @@ def useRBL(rbl):
                 lcd.message("FATAL ERROR \nCheck the Logs")
             raise
         else:
-            print(str(x) + " ERROR " + str(type(e)) + " - " + str(e))
+            print(str(errorCount) + " ERROR " + str(type(e)) + " - " + str(e))
             if lcdUsage:
                 lcd.clear()
                 lcd.message("ERROR-{}\nCheck the Logs".format(type(e)))
