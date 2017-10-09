@@ -5,7 +5,7 @@ import getopt
 import time
 import requests
 import configparser
-import urllib3.exceptions as urlexceptions
+import requests.exceptions as req_exception
 
 
 class RBL:
@@ -146,7 +146,7 @@ def useRBL(rbl):
         if lcdUsage:
             lcd.clear()
         sys.exit(0)
-    except urlexceptions.MaxRetryError as e:
+    except req_exception.ConnectionError as e:
         print("Max Retries Exception!")
         if lcdUsage:
             lcd.clear()
