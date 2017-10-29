@@ -141,6 +141,7 @@ def useRBL(rbl):
             if lcdUsage:
                 lcd.clear()
                 lcd.message("Request Status Code!\n{}".format(r.status_code))
+            time.sleep(3)
     except KeyboardInterrupt:
         print("User exit by Keyboard Interrupt")
         if lcdUsage:
