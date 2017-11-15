@@ -58,9 +58,11 @@ class LCD:
         if self.i2c:
             line_1 = replaceUmlaut(rbl.line + ' ' + rbl.station)
             line_2 = replaceUmlaut('{:0>2d}'.format(rbl.time) + ' ' + ("%.*s" % (17, rbl.direction)))
+            line_3 = time.strftime("%H:%M", time.localtime())
 
             self.i2c.display_string(line_1, 1)
             self.i2c.display_string(line_2, 2)
+            self.i2c.display_string(line_3, 4)
 
         if self.gpio:
             self.gpio.message(replaceUmlaut(rbl.line + ' ' + rbl.station + '\n' + '{:0>2d}'.format(rbl.time)
