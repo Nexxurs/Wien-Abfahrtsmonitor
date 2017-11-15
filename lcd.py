@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 
 import time
-import threading
 
 def replaceUmlaut(s):
     s = s.replace('Ä', "Ae")  # A umlaut
@@ -57,13 +56,11 @@ class LCD:
     def write_rbl(self, rbl):
         self.lastrbl = rbl
         if self.i2c:
-            global _backgroundLightOn
-            if _backgroundLightOn:
-                line_1 = replaceUmlaut(rbl.line + ' ' + rbl.station)
-                line_2 = replaceUmlaut('{:0>2d}'.format(rbl.time) + ' ' + ("%.*s" % (17, rbl.direction)))
+            line_1 = replaceUmlaut(rbl.line + ' ' + rbl.station)
+            line_2 = replaceUmlaut('{:0>2d}'.format(rbl.time) + ' ' + ("%.*s" % (17, rbl.direction)))
 
-                self.i2c.display_string(line_1, 1)
-                self.i2c.display_string(line_2, 2)
+            self.i2c.display_string(line_1, 1)
+            self.i2c.display_string(line_2, 2)
 
         if self.gpio:
             self.gpio.message(replaceUmlaut(rbl.line + ' ' + rbl.station + '\n' + '{:0>2d}'.format(rbl.time)

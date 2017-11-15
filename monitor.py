@@ -190,6 +190,7 @@ def backgroundButtonCallback(channel):
     if globalVals.charlcd.i2c:
         globalVals.charlcd.i2c.lcd_set_background(on=True)
         globalVals.backgroundLightOn = True
+        globalVals.charlcd.clear()
         globalVals.charlcd.write_rbl(globalVals.lastRBL)
         if globalVals.backgroundThread and globalVals.backgroundThread.is_alive():
             globalVals.backgroundThreadReset = True
