@@ -17,14 +17,16 @@ def replaceUmlaut(s):
 _i2cLCD = None
 _backgroundThread = None
 _backgroundThreadReset = False
+_backgroundTimeout = 10
 
-def timeoutBGoff(timeout):
+def timeoutBGoff():
     global _backgroundThreadReset
-    t = timeout
+    global _backgroundTimeout
+    t = _backgroundTimeout
     while t>0:
         if _backgroundThreadReset:
             _backgroundThreadReset = False
-            t = timeout
+            t = _backgroundTimeout
         time.sleep(1)
         t = t-1
         _i2cLCD.lcd_set_background(on=False)
@@ -37,7 +39,7 @@ def callbackBG(channel):
         if _backgroundThread and _backgroundThread.is_alive():
             _backgroundThreadReset = True
         else:
-            _backgroundThread = threading.Thread(target=timeoutBGoff, args=[10])
+            _backgroundThread = threading.Thread(target=timeoutBGoff)
 
 class LCD:
     class DEFAULT:
@@ -94,10 +96,12 @@ class LCD:
 
     def init_backlight_button(self, btn_pin, timeout):
         global _i2cLCD
+        global _backgroundTimeout
         import RPi.GPIO as GPIO
         GPIO.setmode(GPIO.BCM)
         GPIO.setup(btn_pin, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
         GPIO.add_event_detect(btn_pin, GPIO.RISING, callback=callbackBG)
+        _backgroundTimeout = timeout
 
         if self.i2c:
             _i2cLCD = self.i2c

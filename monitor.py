@@ -28,6 +28,8 @@ class Globals:
     errorCount = 0
     rbls = []
     charlcd = lcd.LCD()
+    backlightButtonGPIO = None
+    backlightTimer = 10
 
 
 globalVals = Globals()
@@ -55,12 +57,14 @@ def main(argv):
         usage()
         sys.exit()
 
-    if(globalVals.gpioLCDUsage):
+    if globalVals.gpioLCDUsage:
         globalVals.charlcd.gpio_init()
 
-    if(globalVals.i2cLCDUsage):
+    if globalVals.i2cLCDUsage:
         # todo maybe add address from config
         globalVals.charlcd.i2c_init()
+        if globalVals.backlightButtonGPIO:
+            globalVals.charlcd.init_backlight_button(globalVals.backlightButtonGPIO, globalVals.backlightTimer)
 
 
     while True:
@@ -148,6 +152,8 @@ def parseGlobals(file):
         globalVals.i2cLCDUsage = globalVals.config.getboolean("Settings", "i2clcd", fallback=False)
         globalVals.consoleUsage = globalVals.config.getboolean("Settings", "console", fallback=True)
         globalVals.secondsBetweenLookups = globalVals.config.getint("Settings", "time", fallback=10)
+        globalVals.backlightButtonGPIO = globalVals.config.getint("I2C-LCD", "backlightButtonGPIO", fallback=None)
+        globalVals.backlightTimer = globalVals.config.getint("I2C-LCD", "backlightTimer", fallback=10)
 
         strRBLS = globalVals.config["Settings"]["rbls"].split(',')
         for rbl in strRBLS:
