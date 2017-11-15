@@ -1,12 +1,10 @@
-#!/usr/bin/python3
-# Version 2 Debug
 import sys
 import getopt
+import lcd
 import time
 import requests
 import configparser
 import requests.exceptions as req_exception
-
 
 class RBL:
     id = 0
@@ -16,34 +14,24 @@ class RBL:
     time = -1
 
 
-def replaceUmlaut(s):
-    s = s.replace('Ä', "Ae")  # A umlaut
-    s = s.replace('Ö', "Oe")  # O umlaut
-    s = s.replace('Ü', "Ue")  # U umlaut
-    s = s.replace('ä', "ae")  # a umlaut
-    s = s.replace('ß', "ss")  # Sharp s
-    s = s.replace('ö', "oe")  # o umlaut
-    s = s.replace('ü', "ue")  # u umlaut
-    return s
+class Globals:
+    apiurl = 'https://www.wienerlinien.at/ogd_realtime/monitor?rbl={rbl}&sender={apikey}'
+    apikey = None
+    gpioLCDUsage = False
+    i2cLCDUsage = False
+    consoleUsage = False
+    secondsBetweenLookups = 10
+    maxError = 10
+    config = configparser.ConfigParser()
+    errorCount = 0
+    rbls = []
+    charlcd = lcd.LCD()
+
+
+globalVals = Globals()
 
 
 def main(argv):
-    global apikey
-    global lcdUsage
-    global consoleUsage
-    global st
-    global maxError
-    global errorCount
-    global config
-
-    apikey = False
-
-    lcdUsage = True
-    consoleUsage = True
-    st = 10
-    maxError = 10
-
-    config = config = configparser.ConfigParser()
     try:
         opts, args = getopt.getopt(argv, "hk:t:c:", ["help", "config="])
     except getopt.GetoptError:
@@ -54,108 +42,75 @@ def main(argv):
             usage()
             sys.exit()
         elif opt in ("-c", "--config"):
-            tmp = config.read(arg)
-            if len(tmp) == 0:
-                usage()
-                print("ERROR config file not found")
-                sys.exit(2)
-            try:
-                apikey = config["Settings"]["key"]
-                lcdUsage = config.getboolean("Settings", "lcd")
-                consoleUsage = config.getboolean("Settings", "console")
-                st = config.getint("Settings", "time")
-            except:
-                print("ERROR config file invalid")
-                sys.exit(2)
-
-    if not apikey:
+            parseGlobals(arg)
+    if globalVals.apikey is None:
+        print("API Key is not set! Please add the line key=YOUR-KEY under the Settings Section in the config file")
+        usage()
+        sys.exit()
+    if len(globalVals.rbls) == 0:
+        print("No RBLs found! Please add the line \'rbls = XXXX, XXXX, XXXX\' "
+              "(substitute XXXX to all the rbls you want to observe) into the Settings Section in the config file")
         usage()
         sys.exit()
 
+    if(globalVals.gpioLCDUsage):
+        globalVals.charlcd.gpio_init()
 
-    rbls = []
-    configrbls = config["Settings"]["rbls"].split(',')
+    if(globalVals.i2cLCDUsage):
+        # todo maybe add address from config
+        globalVals.charlcd.i2c_init()
 
-    for rbl in configrbls:
-        tmprbl = RBL()
-        tmprbl.id = rbl
-        rbls.append(tmprbl)
 
-    if len(rbls) == 0:
-        usage()
-        print("No RBLS found!")
-        sys.exit(2)
-
-    if lcdUsage:
-        configLCD()
-
-    print("------------------------------------------")
-    print("New Start: LCD={} Console={} RBLs={}".format(lcdUsage, consoleUsage, configrbls))
-
-    errorCount = 0
     while True:
-        for rbl in rbls:
-            useRBL(rbl)
+        for rbl in globalVals.rbls:
+            lookupRBL(rbl)
 
 
-def useRBL(rbl):
-    global errorCount
-
-    apiurl = 'https://www.wienerlinien.at/ogd_realtime/monitor?rbl={rbl}&sender={apikey}'
-
-    url = apiurl.replace('{apikey}', apikey).replace('{rbl}', rbl.id)
+def lookupRBL(rbl):
+    url = globalVals.apiurl.replace('{apikey}', globalVals.apikey).replace('{rbl}', rbl.id)
     r = None
 
     try:
         r = requests.get(url)
         if r.status_code == 200:
-            json = r.json()['data']['monitors']
-
-            if len(json) <= 0:
+            mon_json = r.json()['data']['monitors']
+            if len(mon_json) == 0:
                 print("Problematic JSON: {}".format(r.json()))
-                if lcdUsage:
-                    lcd.clear()
-                    lcd.message("Problematic JSON!")
+                globalVals.charlcd.clear()
+                globalVals.charlcd.write("Problematic JSON!")
                 time.sleep(1)
             else:
-                soonest = json[0]
-                if len(json) > 1:
-                    for i in range(1, len(json)):
-                        if json[i]['lines'][0]['departures']['departure'][0]['departureTime']['countdown'] < \
-                                soonest['lines'][0]['departures']['departure'][0]['departureTime']['countdown']:
-                            soonest = json[i]
-
-                rbl.line = soonest['lines'][0]['name']
-                rbl.station = soonest['locationStop']['properties']['title']
-                rbl.direction = soonest['lines'][0]['towards']
-                rbl.time = soonest['lines'][0]['departures']['departure'][0]['departureTime']['countdown']
-                errorCount = 0
-                if consoleUsage:
-                    dumpRBL(rbl)
-                if lcdUsage:
-                    lcdShow(rbl)
-                time.sleep(st)
-
+                soonest = mon_json[0]
+                for i in range(1, len(mon_json)):
+                    if mon_json[i]['lines'][0]['departures']['departure'][0]['departureTime']['countdown'] < \
+                            soonest['lines'][0]['departures']['departure'][0]['departureTime']['countdown']:
+                        soonest = mon_json[i]
+            rbl.line = soonest['lines'][0]['name']
+            rbl.station = soonest['locationStop']['properties']['title']
+            rbl.direction = soonest['lines'][0]['towards']
+            rbl.time = soonest['lines'][0]['departures']['departure'][0]['departureTime']['countdown']
+            globalVals.errorCount = 0
+            if globalVals.consoleUsage:
+                printConsole(rbl)
+            globalVals.charlcd.write_rbl(rbl)
+            time.sleep(globalVals.secondsBetweenLookups)
         else:
             print("Request Status Code: {}".format(r.status_code))
-            if lcdUsage:
-                lcd.clear()
-                lcd.message("Request Status Code!\n{}".format(r.status_code))
+            globalVals.charlcd.clear()
+            globalVals.charlcd.write("Request Status Code!\n{}".format(r.status_code))
             time.sleep(3)
     except KeyboardInterrupt:
         print("User exit by Keyboard Interrupt")
-        if lcdUsage:
-            lcd.clear()
-        sys.exit(0)
+        globalVals.charlcd.clear()
+        sys.exit()
     except req_exception.ConnectionError as e:
-        print("Max Retries Exception!")
-        if lcdUsage:
-            lcd.clear()
-            lcd.message("Connection Error!\nWill try again shortly")
+        print("Connection Error",e)
+        globalVals.charlcd.clear()
+        globalVals.charlcd.write("Connection Error!\nWill try again shortly")
         time.sleep(1)
     except Exception as e:
-        errorCount += 1
-        if errorCount > maxError:
+        globalVals.errorCount = globalVals.errorCount+1
+        if globalVals.errorCount > globalVals.maxError:
             print("FATAL ERROR")
             print("Type: {}".format(type(e)))
             if r is not None:
@@ -163,55 +118,63 @@ def useRBL(rbl):
                 if json is not None:
                     print("With JSON:")
                     print(str(json))
-            if lcdUsage:
-                lcd.clear()
-                lcd.message("FATAL ERROR \nCheck the Logs")
+            globalVals.charlcd.write("FATAL ERROR \nCheck the Logs")
             raise
         else:
-            print(str(errorCount) + " ERROR " + str(type(e)) + " - " + str(e))
-            if lcdUsage:
-                lcd.clear()
-                lcd.message("ERROR-{}\nCheck the Logs".format(type(e)))
+            print(str(globalVals.errorCount) + " ERROR " + str(type(e)) + " - " + str(e))
+            globalVals.charlcd.clear()
+            globalVals.charlcd.write("ERROR-{}\nCheck the Logs".format(type(e)))
             time.sleep(1)
 
 
-def configLCD():
-    import Adafruit_CharLCD as LCD
-    global lcd
-    lcd_rs = 27
-    lcd_en = 22
-    lcd_d4 = 25
-    lcd_d5 = 24
-    lcd_d6 = 23
-    lcd_d7 = 18
-    lcd_backlight = 4
-
-    lcd_columns = 16
-    lcd_rows = 2
-
-    lcd = lcd = LCD.Adafruit_CharLCD(lcd_rs, lcd_en, lcd_d4, lcd_d5, lcd_d6, lcd_d7, lcd_columns, lcd_rows,
-                                     lcd_backlight)
-    lcd.clear()
-
-
-def lcdShow(rbl):
-    lcd.clear()
-    lcd.message(replaceUmlaut(rbl.line + ' ' + rbl.station + '\n' + '{:0>2d}'.format(rbl.time)
-                              + ' ' + ("%.*s" % (7, rbl.direction)) + ' ' + time.strftime("%H:%M", time.localtime())))
-
-
-def dumpRBL(rbl):
+def printConsole(rbl):
     print(rbl.line + ' ' + rbl.station)
     print(rbl.direction)
     print(str(rbl.time) + ' Min.')
 
 
+def parseGlobals(file):
+    readFiles = globalVals.config.read(file)
+    if len(readFiles) == 0:
+        usage()
+        print("ERROR config file not found")
+        sys.exit(2)
+
+    try:
+        globalVals.apikey = globalVals.config.get("Settings", "key", fallback=None)
+        globalVals.gpioLCDUsage = globalVals.config.getboolean("Settings", "gpiolcd", fallback=False)
+        globalVals.i2cLCDUsage = globalVals.config.getboolean("Settings", "i2clcd", fallback=False)
+        globalVals.consoleUsage = globalVals.config.getboolean("Settings", "console", fallback=True)
+        globalVals.secondsBetweenLookups = globalVals.config.getint("Settings", "time", fallback=10)
+
+        strRBLS = globalVals.config["Settings"]["rbls"].split(',')
+        for rbl in strRBLS:
+            tmprbl = RBL()
+            tmprbl.id = rbl
+            globalVals.rbls.append(tmprbl)
+
+    except:
+        print("ERROR config file invalid")
+        sys.exit(2)
+
 def usage():
-    print('usage: ' + __file__ + ' [-h] -c configFile\n');
+    print('usage: ' + __file__ + ' [-h] -c configFile\n')
     print('arguments:')
     print('  -c, --config\tconfig file with API Key and rbl numbers')
     print('optional arguments:')
     print('  -h, --help\tshow this help')
+    print('')
+    print('Config File Content:')
+    print('[Settings]')
+    print('key = YOUR_KEY')
+    print('rbls = XXXX, YYYY, ZZZZ')
+    print('i2clcd = True|False')
+    print('gpiolcd = True|False')
+    print('console = True|False')
+    print('time = 10')
+    print('[I2C-LCD]')
+    print('address = I2C_HEX_ADR #0x3f is default')
+
 
 
 if __name__ == "__main__":
