@@ -13,34 +13,6 @@ def replaceUmlaut(s):
     s = s.replace('ü', "ue")  # u umlaut
     return s
 
-
-_i2cLCD = None
-_backgroundThread = None
-_backgroundThreadReset = False
-_backgroundTimeout = 10
-
-def timeoutBGoff():
-    global _backgroundThreadReset
-    global _backgroundTimeout
-    t = _backgroundTimeout
-    while t>0:
-        if _backgroundThreadReset:
-            _backgroundThreadReset = False
-            t = _backgroundTimeout
-        time.sleep(1)
-        t = t-1
-        _i2cLCD.lcd_set_background(on=False)
-
-def callbackBG(channel):
-    global _backgroundThreadReset
-    global _backgroundThread
-    if _i2cLCD:
-        _i2cLCD.lcd_set_background(on=True)
-        if _backgroundThread and _backgroundThread.is_alive():
-            _backgroundThreadReset = True
-        else:
-            _backgroundThread = threading.Thread(target=timeoutBGoff)
-
 class LCD:
     class DEFAULT:
         lcd_rs = 27
@@ -83,26 +55,16 @@ class LCD:
             self.gpio.message(msg)
 
     def write_rbl(self, rbl):
+        self.lastrbl = rbl
         if self.i2c:
-            line_1 = replaceUmlaut(rbl.line + ' ' + rbl.station)
-            line_2 = replaceUmlaut('{:0>2d}'.format(rbl.time) + ' ' + ("%.*s" % (17, rbl.direction)))
+            global _backgroundLightOn
+            if _backgroundLightOn:
+                line_1 = replaceUmlaut(rbl.line + ' ' + rbl.station)
+                line_2 = replaceUmlaut('{:0>2d}'.format(rbl.time) + ' ' + ("%.*s" % (17, rbl.direction)))
 
-            self.i2c.display_string(line_1, 1)
-            self.i2c.display_string(line_2, 2)
+                self.i2c.display_string(line_1, 1)
+                self.i2c.display_string(line_2, 2)
 
         if self.gpio:
             self.gpio.message(replaceUmlaut(rbl.line + ' ' + rbl.station + '\n' + '{:0>2d}'.format(rbl.time)
                               + ' ' + ("%.*s" % (7, rbl.direction)) + ' ' + time.strftime("%H:%M", time.localtime())))
-
-    def init_backlight_button(self, btn_pin, timeout):
-        global _i2cLCD
-        global _backgroundTimeout
-        import RPi.GPIO as GPIO
-        GPIO.setmode(GPIO.BCM)
-        GPIO.setup(btn_pin, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
-        GPIO.add_event_detect(btn_pin, GPIO.RISING, callback=callbackBG)
-        _backgroundTimeout = timeout
-
-        if self.i2c:
-            _i2cLCD = self.i2c
-            self.i2c.lcd_set_background(on=False)

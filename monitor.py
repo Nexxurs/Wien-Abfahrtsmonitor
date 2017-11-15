@@ -7,6 +7,7 @@ import time
 import requests
 import configparser
 import requests.exceptions as req_exception
+import threading
 
 class RBL:
     id = 0
@@ -30,6 +31,11 @@ class Globals:
     charlcd = lcd.LCD()
     backlightButtonGPIO = None
     backlightTimer = 10
+    lastRBL = None
+    backgroundThread = None
+    backgroundThreadReset = False
+    backgroundTimeout = 10
+    backgroundLightOn = True
 
 
 globalVals = Globals()
@@ -64,8 +70,7 @@ def main(argv):
         # todo maybe add address from config
         globalVals.charlcd.i2c_init()
         if globalVals.backlightButtonGPIO:
-            globalVals.charlcd.init_backlight_button(globalVals.backlightButtonGPIO, globalVals.backlightTimer)
-
+            init_backlight_button(globalVals.backlightButtonGPIO, globalVals.backlightTimer)
 
     while True:
         for rbl in globalVals.rbls:
@@ -91,15 +96,17 @@ def lookupRBL(rbl):
                     if mon_json[i]['lines'][0]['departures']['departure'][0]['departureTime']['countdown'] < \
                             soonest['lines'][0]['departures']['departure'][0]['departureTime']['countdown']:
                         soonest = mon_json[i]
-            rbl.line = soonest['lines'][0]['name']
-            rbl.station = soonest['locationStop']['properties']['title']
-            rbl.direction = soonest['lines'][0]['towards']
-            rbl.time = soonest['lines'][0]['departures']['departure'][0]['departureTime']['countdown']
-            globalVals.errorCount = 0
-            if globalVals.consoleUsage:
-                printConsole(rbl)
-            globalVals.charlcd.write_rbl(rbl)
-            time.sleep(globalVals.secondsBetweenLookups)
+                rbl.line = soonest['lines'][0]['name']
+                rbl.station = soonest['locationStop']['properties']['title']
+                rbl.direction = soonest['lines'][0]['towards']
+                rbl.time = soonest['lines'][0]['departures']['departure'][0]['departureTime']['countdown']
+                globalVals.errorCount = 0
+                globalVals.lastRBL = rbl
+                if globalVals.consoleUsage:
+                    printConsole(rbl)
+                if globalVals.backgroundLightOn:
+                    globalVals.charlcd.write_rbl(rbl)
+                time.sleep(globalVals.secondsBetweenLookups)
         else:
             print("Request Status Code: {}".format(r.status_code))
             globalVals.charlcd.clear()
@@ -165,6 +172,44 @@ def parseGlobals(file):
         print("ERROR config file invalid")
         sys.exit(2)
 
+
+def backgroundTimeoutOff():
+    t = globalVals.backgroundTimeout
+    while t>0:
+        t = t-1
+        if globalVals.backgroundThreadReset:
+            globalVals.backgroundThreadReset = False
+            t = globalVals.backgroundTimeout
+        time.sleep(1)
+
+    globalVals.charlcd.i2c.lcd_set_background(on=False)
+    globalVals.backgroundLightOn = False
+
+
+def backgroundButtonCallback(channel):
+    if globalVals.charlcd.i2c:
+        globalVals.charlcd.i2c.lcd_set_background(on=True)
+        globalVals.backgroundLightOn = True
+        globalVals.charlcd.write_rbl(globalVals.lastRBL)
+        if globalVals.backgroundThread and globalVals.backgroundThread.is_alive():
+            globalVals.backgroundThreadReset = True
+        else:
+            globalVals.backgroundThread = threading.Thread(target=backgroundTimeoutOff)
+            globalVals.backgroundThread.start()
+
+
+def init_backlight_button(btn_pin, timeout):
+    import RPi.GPIO as GPIO
+    GPIO.setmode(GPIO.BCM)
+    GPIO.setup(btn_pin, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
+    GPIO.add_event_detect(btn_pin, GPIO.RISING, callback=backgroundButtonCallback)
+    globalVals.backgroundTimeout = timeout
+
+    if globalVals.charlcd.i2c:
+        globalVals.charlcd.i2c.lcd_set_background(on=False)
+        globalVals.backgroundLightOn = False
+
+
 def usage():
     print('usage: ' + __file__ + ' [-h] -c configFile\n')
     print('arguments:')
@@ -182,7 +227,6 @@ def usage():
     print('time = 10')
     print('[I2C-LCD]')
     print('address = I2C_HEX_ADR #0x3f is default')
-
 
 
 if __name__ == "__main__":
