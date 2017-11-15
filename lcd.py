@@ -46,7 +46,7 @@ class LCD:
     def write(self, msg):
         if self.i2c:
             lines = msg.split('\n')
-            for i in range(0,4):
+            for i in range(0,min(4,len(lines))):
                 self.i2c.display_string(lines[i], i+1)
 
         if self.gpio:
@@ -55,7 +55,7 @@ class LCD:
     def write_rbl(self, rbl):
         if self.i2c:
             line_1 = replaceUmlaut(rbl.line + ' ' + rbl.station)
-            line_2 = replaceUmlaut('{:0>2d}'.format(rbl.time) + ' ' + rbl.direction)
+            line_2 = replaceUmlaut('{:0>2d}'.format(rbl.time) + ' ' + ("%.*s" % (17, rbl.direction)))
 
             self.i2c.display_string(line_1, 1)
             self.i2c.display_string(line_2, 2)
@@ -63,3 +63,4 @@ class LCD:
         if self.gpio:
             self.gpio.message(replaceUmlaut(rbl.line + ' ' + rbl.station + '\n' + '{:0>2d}'.format(rbl.time)
                               + ' ' + ("%.*s" % (7, rbl.direction)) + ' ' + time.strftime("%H:%M", time.localtime())))
+
