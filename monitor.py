@@ -109,17 +109,15 @@ def lookupRBL(rbl):
                 time.sleep(globalVals.secondsBetweenLookups)
         else:
             print("Request Status Code: {}".format(r.status_code))
-            globalVals.charlcd.clear()
-            globalVals.charlcd.write("Request Status Code!\n{}".format(r.status_code))
+            writeLCD("Request Status Code!\n{}".format(r.status_code))
             time.sleep(3)
     except KeyboardInterrupt:
         print("User exit by Keyboard Interrupt")
         globalVals.charlcd.clear()
         sys.exit()
     except req_exception.ConnectionError as e:
-        print("Connection Error",e)
-        globalVals.charlcd.clear()
-        globalVals.charlcd.write("Connection Error!\nWill try again shortly")
+        print("Connection Error", e)
+        writeLCD("Connection Error!\nWill try again shortly")
         time.sleep(1)
     except Exception as e:
         globalVals.errorCount = globalVals.errorCount+1
@@ -135,8 +133,7 @@ def lookupRBL(rbl):
             raise
         else:
             print(str(globalVals.errorCount) + " ERROR " + str(type(e)) + " - " + str(e))
-            globalVals.charlcd.clear()
-            globalVals.charlcd.write("ERROR-{}\nCheck the Logs".format(type(e)))
+            writeLCD("ERROR-{}\nCheck the Logs".format(type(e)))
             time.sleep(1)
 
 
@@ -192,6 +189,19 @@ def backgroundButtonCallback(channel):
         globalVals.backgroundLightOn = True
         globalVals.charlcd.clear()
         globalVals.charlcd.write_rbl(globalVals.lastRBL)
+        if globalVals.backgroundThread and globalVals.backgroundThread.is_alive():
+            globalVals.backgroundThreadReset = True
+        else:
+            globalVals.backgroundThread = threading.Thread(target=backgroundTimeoutOff)
+            globalVals.backgroundThread.start()
+
+
+def writeLCD(msg):
+    globalVals.charlcd.clear()
+    globalVals.charlcd.write(msg)
+    if globalVals.charlcd.i2c:
+        globalVals.charlcd.i2c.lcd_set_background(on=True)
+        globalVals.backgroundLightOn = True
         if globalVals.backgroundThread and globalVals.backgroundThread.is_alive():
             globalVals.backgroundThreadReset = True
         else:
