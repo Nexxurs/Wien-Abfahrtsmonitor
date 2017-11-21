@@ -26,8 +26,6 @@ class LCD:
     i2c = None
     gpio = None
 
-
-
     def gpio_init(self, rs=DEFAULT.lcd_rs, en=DEFAULT.lcd_en, d4=DEFAULT.lcd_d4, d5=DEFAULT.lcd_d5,
                   d6=DEFAULT.lcd_d6, d7=DEFAULT.lcd_d7, backlight=DEFAULT.lcd_backlight, rows=2, columns=16):
         import Adafruit_CharLCD as GPIO_LCD
@@ -47,7 +45,7 @@ class LCD:
     def write(self, msg):
         if self.i2c:
             lines = msg.split('\n')
-            for i in range(0,min(4,len(lines))):
+            for i in range(0, min(4, len(lines))):
                 self.i2c.display_string(lines[i], i+1)
 
         if self.gpio:
@@ -56,14 +54,21 @@ class LCD:
     def write_rbl(self, rbl):
         self.lastrbl = rbl
         if self.i2c:
-            line_1 = replaceUmlaut(rbl.line + ' ' + rbl.station)
-            line_2 = replaceUmlaut('{:0>2d}'.format(rbl.time) + ' ' + ("%.*s" % (17, rbl.direction)))
-            line_3 = time.strftime("%H:%M", time.localtime())
+            line_3 = rbl.updatetime.time().strftime("%H:%M")
+            if rbl.errormsg is None:
+                line_1 = replaceUmlaut(rbl.line + ' ' + rbl.station)
+                line_2 = replaceUmlaut('{:0>2d}'.format(rbl.time) + ' ' + ("%.*s" % (17, rbl.direction)))
+            else:
+                line_1 = "An Error Occured:"
+                line_2 = rbl.errormsg
 
             self.i2c.display_string(line_1, 1)
             self.i2c.display_string(line_2, 2)
             self.i2c.display_string(line_3, 4)
 
         if self.gpio:
-            self.gpio.message(replaceUmlaut(rbl.line + ' ' + rbl.station + '\n' + '{:0>2d}'.format(rbl.time)
-                              + ' ' + ("%.*s" % (7, rbl.direction)) + ' ' + time.strftime("%H:%M", time.localtime())))
+            if rbl.errormsg is None:
+                self.gpio.message(replaceUmlaut(rbl.line + ' ' + rbl.station + '\n' + '{:0>2d}'.format(rbl.time)
+                                                + ' ' + ("%.*s" % (7, rbl.direction)) + ' ' + rbl.updatetime.time().strftime("%H:%M")))
+            else:
+                self.gpio.message("Error: " + rbl.errormsg + "\n" + rbl.updatetime.time().strftime("%H:%M"))

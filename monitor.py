@@ -8,6 +8,7 @@ import requests
 import configparser
 import requests.exceptions as req_exception
 import threading
+import datetime
 
 class RBL:
     id = 0
@@ -15,6 +16,8 @@ class RBL:
     station = ''
     direction = ''
     time = -1
+    errormsg = None
+    updatetime = datetime.datetime.min
 
 
 class Globals:
@@ -71,15 +74,28 @@ def main(argv):
         globalVals.charlcd.i2c_init()
         if globalVals.backlightButtonGPIO:
             init_backlight_button(globalVals.backlightButtonGPIO, globalVals.backlightTimer)
-
-    while True:
-        for rbl in globalVals.rbls:
-            lookupRBL(rbl)
+    try:
+        while True:
+            for rbl in globalVals.rbls:
+                lookupRBL(rbl)
+                globalVals.lastRBL = rbl
+                if globalVals.consoleUsage:
+                    printConsole(rbl)
+                if globalVals.backgroundLightOn:
+                    globalVals.charlcd.write_rbl(rbl)
+                time.sleep(globalVals.secondsBetweenLookups)
+    except KeyboardInterrupt:
+        print("User exit by Keyboard Interrupt")
+        globalVals.charlcd.clear()
+        sys.exit()
 
 
 def lookupRBL(rbl):
     url = globalVals.apiurl.replace('{apikey}', globalVals.apikey).replace('{rbl}', rbl.id)
     r = None
+
+    rbl.updatetime = datetime.datetime.now()
+    rbl.errormsg = None
 
     try:
         r = requests.get(url)
@@ -101,24 +117,14 @@ def lookupRBL(rbl):
                 rbl.direction = soonest['lines'][0]['towards']
                 rbl.time = soonest['lines'][0]['departures']['departure'][0]['departureTime']['countdown']
                 globalVals.errorCount = 0
-                globalVals.lastRBL = rbl
-                if globalVals.consoleUsage:
-                    printConsole(rbl)
-                if globalVals.backgroundLightOn:
-                    globalVals.charlcd.write_rbl(rbl)
-                time.sleep(globalVals.secondsBetweenLookups)
+                return rbl
         else:
-            print("Request Status Code: {}".format(r.status_code))
-            writeLCD("Request Status Code!\n{}".format(r.status_code))
-            time.sleep(3)
-    except KeyboardInterrupt:
-        print("User exit by Keyboard Interrupt")
-        globalVals.charlcd.clear()
-        sys.exit()
+            rbl.errormsg = "Request Status Code: {}".format(r.status_code)
+            return rbl
     except req_exception.ConnectionError as e:
+        rbl.errormsg = "Connection Error!\n{}\nWill try again shortly".format(type(e))
         print("Connection Error", e)
-        writeLCD("Connection Error!\nWill try again shortly")
-        time.sleep(1)
+        return rbl
     except Exception as e:
         globalVals.errorCount = globalVals.errorCount+1
         if globalVals.errorCount > globalVals.maxError:
@@ -129,7 +135,7 @@ def lookupRBL(rbl):
                 if json is not None:
                     print("With JSON:")
                     print(str(json))
-            globalVals.charlcd.write("FATAL ERROR \nCheck the Logs")
+            writeLCD("FATAL ERROR \nCheck the Logs")
             raise
         else:
             print(str(globalVals.errorCount) + " ERROR " + str(type(e)) + " - " + str(e))
@@ -138,9 +144,12 @@ def lookupRBL(rbl):
 
 
 def printConsole(rbl):
-    print(rbl.line + ' ' + rbl.station)
-    print(rbl.direction)
-    print(str(rbl.time) + ' Min.')
+    if rbl.errormsg is None:
+        print(rbl.line + ' ' + rbl.station)
+        print(rbl.direction)
+        print(str(rbl.time) + ' Min.\t\t' + rbl.updatetime.time().strftime("%H:%M"))
+    else:
+        print("Error: {}".format(rbl.errormsg))
 
 
 def parseGlobals(file):
