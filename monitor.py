@@ -19,6 +19,10 @@ class RBL:
     errormsg = None
     updatetime = datetime.datetime.min
 
+    def __str__(self):
+        return "Line {}, Station {}, Direction {}, Time {}, Error: {}".format(self.line, self.station,
+                                                                              self.direction, self.time, self.errormsg)
+
 
 class Globals:
     apiurl = 'https://www.wienerlinien.at/ogd_realtime/monitor?rbl={rbl}&sender={apikey}'
@@ -45,8 +49,9 @@ globalVals = Globals()
 
 
 def main(argv):
+    debug = False
     try:
-        opts, args = getopt.getopt(argv, "hk:t:c:", ["help", "config="])
+        opts, args = getopt.getopt(argv, "dhc:", ["debug", "help", "config="])
     except getopt.GetoptError:
         usage()
         sys.exit(2)
@@ -56,6 +61,8 @@ def main(argv):
             sys.exit()
         elif opt in ("-c", "--config"):
             parseGlobals(arg)
+        elif opt in ("-d", "--debug"):
+            debug = True
     if globalVals.apikey is None:
         print("API Key is not set! Please add the line key=YOUR-KEY under the Settings Section in the config file")
         usage()
@@ -71,7 +78,7 @@ def main(argv):
 
     if globalVals.i2cLCDUsage:
         # todo maybe add address from config
-        globalVals.charlcd.i2c_init()
+        globalVals.charlcd.i2c_init(debug=debug)
         if globalVals.backlightButtonGPIO:
             init_backlight_button(globalVals.backlightButtonGPIO, globalVals.backlightTimer)
     try:
@@ -79,8 +86,7 @@ def main(argv):
             for rbl in globalVals.rbls:
                 lookupRBL(rbl)
                 globalVals.lastRBL = rbl
-                if globalVals.consoleUsage:
-                    printConsole(rbl)
+                printConsole(rbl)
                 if globalVals.backgroundLightOn:
                     globalVals.charlcd.write_rbl(rbl)
                 time.sleep(globalVals.secondsBetweenLookups)
@@ -144,11 +150,11 @@ def lookupRBL(rbl):
 
 
 def printConsole(rbl):
-    if rbl.errormsg is None:
+    if rbl.errormsg is None and globalVals.consoleUsage:
         print(rbl.line + ' ' + rbl.station)
         print(rbl.direction)
         print(str(rbl.time) + ' Min.\t\t' + rbl.updatetime.time().strftime("%H:%M"))
-    else:
+    elif rbl.errormsg is not None:
         print("Error: {}".format(rbl.errormsg))
 
 

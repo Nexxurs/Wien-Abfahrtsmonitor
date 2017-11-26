@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
 
-import time
-
 def replaceUmlaut(s):
     s = s.replace('Ä', "Ae")  # A umlaut
     s = s.replace('Ö', "Oe")  # O umlaut
@@ -31,9 +29,10 @@ class LCD:
         import Adafruit_CharLCD as GPIO_LCD
         self.gpio = GPIO_LCD.Adafruit_CharLCD(rs, en, d4, d5, d6, d7, columns, rows, backlight)
 
-    def i2c_init(self, address=DEFAULT.i2c_address):
+    def i2c_init(self, address=DEFAULT.i2c_address, debug=False):
         import libs.i2c_lcd as I2C_LCD
         self.i2c = I2C_LCD.lcd(address)
+        self.i2cdebug = debug
 
     def clear(self):
         if self.i2c:
@@ -42,11 +41,22 @@ class LCD:
         if self.gpio:
             self.gpio.clear()
 
+    def write_i2c(self, msg):
+        if self.i2cdebug:
+            print("I2C LCD Write: " + msg)
+        lines = msg.split('\n')
+        to_print = []
+        for l in lines:
+            number_lines = int(len(l) / 20) + 1
+            for i in range(number_lines):
+                to_print.append(l[i * 20:(i + 1) * 20])
+
+        for i in range(0, min(4, len(to_print))):
+            self.i2c.display_string(to_print[i], i + 1)
+
     def write(self, msg):
         if self.i2c:
-            lines = msg.split('\n')
-            for i in range(0, min(4, len(lines))):
-                self.i2c.display_string(lines[i], i+1)
+            self.write_i2c(msg)
 
         if self.gpio:
             self.gpio.message(msg)
@@ -54,17 +64,19 @@ class LCD:
     def write_rbl(self, rbl):
         self.lastrbl = rbl
         if self.i2c:
+            if self.i2cdebug:
+                print("I2C LCD RBL Write: "+str(rbl))
             line_3 = rbl.updatetime.time().strftime("%H:%M")
             if rbl.errormsg is None:
                 line_1 = replaceUmlaut(rbl.line + ' ' + rbl.station)
                 line_2 = replaceUmlaut('{:0>2d}'.format(rbl.time) + ' ' + ("%.*s" % (17, rbl.direction)))
             else:
                 line_1 = "An Error Occured:"
-                line_2 = rbl.errormsg
+                line_2 = replaceUmlaut(rbl.errormsg)
 
-            self.i2c.display_string(line_1, 1)
-            self.i2c.display_string(line_2, 2)
-            self.i2c.display_string(line_3, 4)
+            msg = line_1+'\n'+line_2+'\n'+line_3
+            self.write_i2c(msg)
+
 
         if self.gpio:
             if rbl.errormsg is None:
