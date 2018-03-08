@@ -1,5 +1,7 @@
 import argparse
-from wienerlinien_api import WienerLinienAPI
+from fetcher import Fetcher
+from printer import Printer
+from time import sleep
 
 
 def create_argparser():
@@ -12,7 +14,7 @@ def create_argparser():
                            help="Wenn ein I2C LCD Display verwendet werden soll. "
                                 "Soll dies zusammen mit einem Button auf Abruf geschehen, "
                                 "verwende \"--LCD-Button [Button-Pin]\"")
-    lcd_group.add_argument("--LCD-Button", dest="lcd_button",
+    lcd_group.add_argument("--LCD-Button", dest="lcd_button", type=int,
                            help="Wenn ein I2C LCD Display mit Button verwendet werden soll. Der Button-Pin bezieht sich"
                                 " auf den GPIO Pin, an dem der Button angeschlossen ist")
 
@@ -26,7 +28,21 @@ def create_argparser():
 def main():
     parser = create_argparser()
     args = parser.parse_args()
-    wiener_linien = WienerLinienAPI(args.apikey)
+
+    printer = Printer()
+    if args.lcd_usage or args.lcd_button:
+        printer.add_lcd_usage()
+    if args.console_usage:
+        printer.add_console_usage()
+
+    fetcher = Fetcher(apikey=args.apikey, printer=printer, rbls=args.rbls)
+    if args.lcd_button:
+        fetcher.start_button_fetcher(args.lcd_button)
+    else:
+        fetcher.start_timeout_fetcher()
+
+    while True:
+        sleep(60)
 
 
 if __name__ == '__main__':
