@@ -2,6 +2,7 @@
 
 from datetime import datetime
 from threading import Thread
+from time import sleep
 
 def replace_umlaut(s):
     s = s.replace('Ä', "Ae")  # A umlaut
@@ -68,8 +69,22 @@ class Printer:
                 line = replace_umlaut(lines[i])
                 self.lcd.display_string(line[:20], i+1)
 
-    def timeout_thread_target(self):
-
+    def _timeout_thread_target(self):
+        timer = self.timeout
+        while timer > 0:
+            timer -= 1
+            if self.timeout_reset:
+                self.timeout_reset = False
+                timer = self.timeout
+            sleep(1)
+        self.lcd.lcd_set_background(False)
 
     def refresh_sleep_timeout(self):
-        pass
+        if self.lcd is None or self.timeout is None:
+            return
+        if self.timeout_thread is None or not self.timeout_thread.is_alive():
+            self.lcd.lcd_set_background(True)
+            self.timeout_thread = Thread(target=self._timeout_thread_target)
+            self.timeout_thread.start()
+        else:
+            self.timeout_reset = True

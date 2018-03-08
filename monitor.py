@@ -38,6 +38,7 @@ def main():
     fetcher = Fetcher(apikey=args.apikey, printer=printer, rbls=args.rbls)
     if args.lcd_button:
         fetcher.start_button_fetcher(args.lcd_button)
+        printer.add_sleep_timeout(10)
     else:
         fetcher.start_timeout_fetcher()
 
