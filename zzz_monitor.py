@@ -10,6 +10,7 @@ import requests.exceptions as req_exception
 import threading
 import datetime
 
+
 class RBL:
     id = 0
     line = ''
@@ -98,6 +99,7 @@ def main(argv):
 
 def lookupRBL(rbl):
     url = globalVals.apiurl.replace('{apikey}', globalVals.apikey).replace('{rbl}', rbl.id)
+    print(url)
     r = None
 
     rbl.updatetime = datetime.datetime.now()

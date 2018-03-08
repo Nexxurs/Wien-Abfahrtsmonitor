@@ -1,0 +1,11 @@
+[Settings]
+key = 9Ks8EggatPaucd3
+#RBLS sind getrennt durch das Symbol ','
+rbls = 1388
+console = True
+i2clcd = False
+
+#[I2C-LCD]
+#address = 0x3f
+#backlightButtonGPIO = 4
+#backlightTimer = 10
