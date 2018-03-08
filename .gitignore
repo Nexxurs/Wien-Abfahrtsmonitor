@@ -1,3 +1,5 @@
 monitor.in
 
 \.idea/
+
+libs/__pycache__/

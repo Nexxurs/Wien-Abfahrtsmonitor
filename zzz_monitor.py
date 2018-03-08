@@ -2,7 +2,7 @@
 
 import sys
 import getopt
-import lcd
+import zzz_lcd_old
 import time
 import requests
 import configparser
@@ -36,7 +36,7 @@ class Globals:
     config = configparser.ConfigParser()
     errorCount = 0
     rbls = []
-    charlcd = lcd.LCD()
+    charlcd = zzz_lcd_old.LCD()
     backlightButtonGPIO = None
     backlightTimer = 10
     lastRBL = None
