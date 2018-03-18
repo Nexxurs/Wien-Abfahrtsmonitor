@@ -3,6 +3,14 @@ from fetcher import Fetcher
 from printer import Printer
 from time import sleep
 
+import logging
+import sys
+
+logging_format = "%(asctime)s - %(levelname)s - %(message)s"
+logging.basicConfig(stream=sys.stdout, format=logging_format, level=logging.WARNING)
+
+_logger = logging.getLogger(__name__)
+
 
 def create_argparser():
     parser = argparse.ArgumentParser(description="Ein Abfahrtsmonitor für die Wiener Linien")

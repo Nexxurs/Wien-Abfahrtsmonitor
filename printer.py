@@ -4,6 +4,9 @@ from datetime import datetime
 from threading import Thread
 from time import sleep
 
+import logging
+_logger = logging.getLogger(__name__)
+
 def replace_umlaut(s):
     s = s.replace('Ä', "Ae")  # A umlaut
     s = s.replace('Ö', "Oe")  # O umlaut
@@ -42,7 +45,7 @@ class Printer:
             print(rbl.direction)
             print(str(rbl.time) + ' Min')
         else:
-            print("Error: {}".format(rbl.errormsg))
+            _logger.warning("Error: {}".format(rbl.errormsg))
 
         if self.lcd is not None:
             lines = []

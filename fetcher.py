@@ -4,6 +4,8 @@ from datetime import datetime, timedelta
 from threading import Thread
 from time import sleep
 
+import logging
+_logger = logging.getLogger(__name__)
 
 class RBL:
     id = 0
@@ -89,8 +91,8 @@ class Fetcher:
                 rbl.errormsg = "Request Status Code Error: {}".format(req.status_code)
         except req_exception.ConnectionError as e:
             rbl.errormsg = "Connection Error!\n  {}\n  Will try again shortly".format(type(e))
-            print("Connection Error", e)
+            _logger.warning("Connection Error: "+str(e))
         except Exception as e:
-            print("Unknown Exception!", e)
+            _logger.warning("Unknown Exception: "+str(e))
             raise e
         return rbl
