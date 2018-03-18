@@ -40,12 +40,12 @@ class Printer:
 
     def print_rbl(self, rbl):
         self.refresh_sleep_timeout()
-        if self.console_usage and rbl.errormsg is None:
+        if rbl.errormsg is not None:
+            _logger.warning("Error: {}".format(rbl.errormsg))
+        elif self.console_usage:
             print(rbl.line + ' ' + rbl.station)
             print(rbl.direction)
             print(str(rbl.time) + ' Min')
-        else:
-            _logger.warning("Error: {}".format(rbl.errormsg))
 
         if self.lcd is not None:
             lines = []
